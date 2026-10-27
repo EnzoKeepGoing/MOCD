@@ -1,0 +1,24 @@
+{
+  "hidden_dims": [
+    512,
+    64
+  ],
+  "dropout": [
+    0.3,
+    0.3
+  ],
+  "emb_dim": 30,
+  "router_hidden_dim": 128,
+  "gate_init": -1.0,
+  "raw_gate_init": 0.0,
+  "projection_init_std": 0.0005,
+  "semantic_scale_init": 0.99,
+  "lr": 0.0005,
+  "batch_size": 128,
+  "epochs": 30,
+  "fold": 0,
+  "seed": 3407,
+  "beta": 13.0,
+  "semantic_temperature": 2.0,
+  "dataset": "jiuzhang_g7"
+}

@@ -1,0 +1,4 @@
+dataset,auc_mean_percent,auc_sample_std_percent,acc_mean_percent,acc_sample_std_percent,kc_mnd_mean_percent,kc_mnd_sample_std_percent
+Grade3,74.36682163,0.32680108,73.5633551,0.2014424,6.4345331,2.6920497
+Math50k,73.28600597,0.20633379,70.939388,0.1467215,7.5554327,1.4347884
+MidMath,75.475,0.308,71.944,0.292,5.077,2.559
