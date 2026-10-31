@@ -48,7 +48,7 @@ The item banks contain the frozen exercise-text, correct-reasoning and error-rea
 
 ## Semantic evidence prompts
 
-The archived prompt templates are in [`prompts/`](prompts/). Each stage pairs a system prompt with a user prefix followed by its JSON input; the review stage also receives the preceding agents' evidence:
+The prompt templates are in [`prompts/`](prompts/). Each stage pairs a system prompt with a user prefix followed by its JSON input; the review stage also receives the preceding agents' evidence:
 
 | Stage | System prompt | User prefix |
 | --- | --- | --- |
@@ -57,7 +57,6 @@ The archived prompt templates are in [`prompts/`](prompts/). Each stage pairs a 
 | Evidence and KC-binding review | [`critic_system_v2_5.txt`](prompts/critic_system_v2_5.txt) | [`critic_user.txt`](prompts/critic_user.txt) |
 
 These prompts document the offline evidence-generation workflow. Training and evaluation read the encoded banks above and do not invoke an LLM.
-The archived Distractor user prefix says “at most two” evidence items, while its v3 system prompt requests every incorrect option; the files are preserved verbatim.
 
 ## Environment
 
