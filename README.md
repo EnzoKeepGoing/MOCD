@@ -1,6 +1,6 @@
 # MOCD
 
-This repository contains the **MOCD** (Multi-level semantic-guided Online Cognitive Diagnosis) model, its five-fold configurations, mapped response data and training scripts for Grade3, Math50k and MidMath. No comparison models are included.
+This repository contains the **MOCD** (Multi-level semantic-guided Online Cognitive Diagnosis) model, its five-fold configurations, mapped response data and training scripts for Grade3, Math50k and MidMath.
 
 ## Repository layout
 
