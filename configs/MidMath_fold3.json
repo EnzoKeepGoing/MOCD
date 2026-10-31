@@ -1,24 +1,24 @@
 {
   "hidden_dims": [
     512,
-    128
+    64
   ],
   "dropout": [
     0.3,
-    0.3
+    0.2
   ],
   "emb_dim": 30,
   "router_hidden_dim": 64,
   "gate_init": 0.0,
   "raw_gate_init": 0.0,
-  "projection_init_std": 0.001,
+  "projection_init_std": 0.0005,
   "semantic_scale_init": 0.99,
   "lr": 0.0009,
   "batch_size": 128,
   "epochs": 30,
   "fold": 3,
-  "seed": 42,
-  "beta": 12.0,
-  "semantic_temperature": 1.5,
-  "dataset": "jiuzhang_g4_g5"
+  "seed": 3407,
+  "beta": 13.0,
+  "semantic_temperature": 2.0,
+  "dataset": "MidMath"
 }

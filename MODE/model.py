@@ -52,15 +52,11 @@ class _SemanticEncoder(_Backbone):
             raise ValueError('projection_init_std must be positive')
         if not 0 < semantic_scale_init < 1:
             raise ValueError('semantic_scale_init must lie strictly between zero and one')
-        self.semantic_mode = 'both'
-        self.use_raw_semantics = bool(True)
-        self.use_kc_name_semantics = bool(True)
-        self.use_kc_edge_semantics = bool(True)
         self.router_hidden_dim = int(router_hidden_dim)
         self.semantic_scale_init = float(semantic_scale_init)
         self.evidence_bank = ItemEvidenceBank(evidence_bank_path)
         if self.evidence_bank.num_items != n_exercises:
-            raise ValueError(f'EGCD bank has {self.evidence_bank.num_items} items, but model expects {n_exercises}')
+            raise ValueError(f'Item bank has {self.evidence_bank.num_items} items, but model expects {n_exercises}')
         self.kc_semantic_bank = None
         self.kc_global_proj = None
         self.edge_solution_proj = None
@@ -69,9 +65,9 @@ class _SemanticEncoder(_Backbone):
             raise ValueError('kc_semantic_bank_path is required when KC semantics are enabled')
         self.kc_semantic_bank = KCSemanticBank(kc_semantic_bank_path)
         if self.kc_semantic_bank.num_items != n_exercises:
-            raise ValueError(f'EGCD KC bank has {self.kc_semantic_bank.num_items} items, but model expects {n_exercises}')
+            raise ValueError(f'KC bank has {self.kc_semantic_bank.num_items} items, but model expects {n_exercises}')
         if self.kc_semantic_bank.num_concepts != n_concepts:
-            raise ValueError(f'EGCD KC bank has {self.kc_semantic_bank.num_concepts} KCs, but model expects {n_concepts}')
+            raise ValueError(f'KC bank has {self.kc_semantic_bank.num_concepts} KCs, but model expects {n_concepts}')
         semantic_dim = self.evidence_bank.embedding_dim
         self.solution_proj = nn.Linear(semantic_dim, emb_dim)
         self.distractor_proj = nn.Linear(semantic_dim, emb_dim)
@@ -98,29 +94,6 @@ class _SemanticEncoder(_Backbone):
         self.edge_distractor_proj = nn.Linear(kc_semantic_dim, emb_dim, bias=False)
         nn.init.zeros_(self.edge_solution_proj.weight)
         nn.init.zeros_(self.edge_distractor_proj.weight)
-        self._last_item_embedding = None
-        self._last_raw_residual = None
-        self._last_solution_residual = None
-        self._last_distractor_residual = None
-        self._last_raw_active = None
-        self._last_solution_active = None
-        self._last_distractor_active = None
-        self._last_view_gates = None
-        self._last_global_kc_residual = None
-        self._last_edge_kc_residual = None
-        self._last_edge_active_ratio = 0.0
-
-    @property
-    def raw_gate(self) -> torch.Tensor:
-        return torch.sigmoid(self.raw_gate_logit)
-
-    @property
-    def solution_gate(self) -> torch.Tensor:
-        return torch.sigmoid(self.solution_gate_logit)
-
-    @property
-    def distractor_gate(self) -> torch.Tensor:
-        return torch.sigmoid(self.distractor_gate_logit)
 
     @property
     def semantic_scale(self) -> torch.Tensor:
@@ -131,7 +104,7 @@ class _SemanticEncoder(_Backbone):
         expected = {'raw_embedding': (batch_size, semantic_dim), 'raw_available_mask': (batch_size,), 'solution_embedding': (batch_size, semantic_dim), 'solution_available_mask': (batch_size,), 'distractor_total_count': (batch_size,)}
         for name, shape in expected.items():
             if bank[name].shape != shape:
-                raise ValueError(f'Invalid EGCD bank batch {name}: expected {shape}, got {tuple(bank[name].shape)}')
+                raise ValueError(f'Invalid item bank batch {name}: expected {shape}, got {tuple(bank[name].shape)}')
         distractor_shape = bank['distractor_embedding'].shape
         if len(distractor_shape) != 3 or distractor_shape[0] != batch_size or distractor_shape[2] != semantic_dim:
             raise ValueError('Invalid batched Distractor embedding shape')
@@ -140,35 +113,6 @@ class _SemanticEncoder(_Backbone):
         for name in ('raw_embedding', 'solution_embedding', 'distractor_embedding'):
             if not torch.isfinite(bank[name]).all():
                 raise ValueError(f'Non-finite values found in batched {name}')
-
-    @staticmethod
-    def _grad_norm(layer: nn.Linear) -> float:
-        grad = layer.weight.grad
-        return 0.0 if grad is None else float(grad.detach().norm().cpu())
-
-    def training_diagnostics(self) -> Dict[str, float]:
-        if self._last_item_embedding is None:
-            return {}
-        item_norm = self._last_item_embedding.norm(dim=-1).mean()
-        raw_norm = self._last_raw_residual.norm(dim=-1).mean()
-        solution_norm = self._last_solution_residual.norm(dim=-1).mean()
-        distractor_norm = self._last_distractor_residual.norm(dim=-1).mean()
-        gates = self._last_view_gates
-        eps = torch.finfo(item_norm.dtype).eps
-        gate_eps = torch.finfo(gates.dtype).eps
-        gate_entropy = -(gates * torch.log(gates.clamp_min(gate_eps))).sum(dim=1).mean()
-        diagnostics = {'raw_gate_prior': float(self.raw_gate.detach().cpu()), 'solution_gate_prior': float(self.solution_gate.detach().cpu()), 'distractor_gate_prior': float(self.distractor_gate.detach().cpu()), 'raw_gate_mean': float(gates[:, 0].mean().cpu()), 'solution_gate_mean': float(gates[:, 1].mean().cpu()), 'distractor_gate_mean': float(gates[:, 2].mean().cpu()), 'raw_gate_std': float(gates[:, 0].std(unbiased=False).cpu()), 'solution_gate_std': float(gates[:, 1].std(unbiased=False).cpu()), 'distractor_gate_std': float(gates[:, 2].std(unbiased=False).cpu()), 'router_gate_entropy': float(gate_entropy.cpu()), 'semantic_scale': float(self.semantic_scale.detach().cpu()), 'item_embedding_norm': float(item_norm.cpu()), 'raw_residual_norm': float(raw_norm.cpu()), 'solution_residual_norm': float(solution_norm.cpu()), 'distractor_residual_norm': float(distractor_norm.cpu()), 'raw_residual_ratio': float((raw_norm / (item_norm + eps)).cpu()), 'solution_residual_ratio': float((solution_norm / (item_norm + eps)).cpu()), 'distractor_residual_ratio': float((distractor_norm / (item_norm + eps)).cpu()), 'raw_projection_grad_norm': self._grad_norm(self.raw_proj), 'solution_projection_grad_norm': self._grad_norm(self.solution_proj), 'distractor_projection_grad_norm': self._grad_norm(self.distractor_proj), 'router_output_grad_norm': self._grad_norm(self.semantic_router[2]), 'raw_nonzero_evidence_ratio': float(self._last_raw_active.float().mean().cpu()), 'solution_nonzero_evidence_ratio': float(self._last_solution_active.float().mean().cpu()), 'distractor_nonzero_evidence_ratio': float(self._last_distractor_active.float().mean().cpu())}
-        if self._last_global_kc_residual is not None:
-            diagnostics['global_kc_residual_norm'] = float(self._last_global_kc_residual.norm(dim=-1).mean().cpu())
-        if self._last_edge_kc_residual is not None:
-            active = self._last_edge_kc_residual.norm(dim=-1) > 0
-            diagnostics['edge_kc_residual_norm'] = float(self._last_edge_kc_residual[active].norm(dim=-1).mean().cpu()) if active.any() else 0.0
-            ratio = self._last_edge_active_ratio
-            diagnostics['edge_active_ratio'] = float(ratio.cpu()) if torch.is_tensor(ratio) else ratio
-        diagnostics['global_kc_projection_grad_norm'] = self._grad_norm(self.kc_global_proj)
-        diagnostics['edge_solution_projection_grad_norm'] = self._grad_norm(self.edge_solution_proj)
-        diagnostics['edge_distractor_projection_grad_norm'] = self._grad_norm(self.edge_distractor_proj)
-        return diagnostics
 
     @staticmethod
     def _pool_distractors(distractor_semantic: torch.Tensor, available_mask: torch.Tensor, total_count: torch.Tensor) -> torch.Tensor:
@@ -184,21 +128,9 @@ class _SemanticEncoder(_Backbone):
         weights = torch.softmax(logits, dim=-1)
         return torch.where(available.any(dim=-1, keepdim=True), weights, torch.zeros_like(weights))
 
-    def _reset_diagnostics(self, item_embedding: torch.Tensor) -> None:
-        zero = torch.zeros_like(item_embedding).detach()
-        inactive = torch.zeros(item_embedding.shape[0], dtype=torch.bool, device=item_embedding.device)
-        self._last_raw_residual = zero
-        self._last_solution_residual = zero
-        self._last_distractor_residual = zero
-        self._last_raw_active = inactive
-        self._last_solution_active = inactive
-        self._last_distractor_active = inactive
-        self._last_view_gates = torch.zeros((item_embedding.shape[0], 3), dtype=item_embedding.dtype, device=item_embedding.device)
-
     def _global_knowledge(self) -> torch.Tensor:
         semantic = self.kc_name_embedding.to(device=self.knowledge_emb.device, dtype=self.knowledge_emb.dtype)
         residual = torch.tanh(self.kc_global_proj(semantic))
-        self._last_global_kc_residual = residual.detach()
         return self.knowledge_emb + residual
 
     def _edge_residual(self, exercise_ids: torch.Tensor, q_vector: torch.Tensor) -> torch.Tensor:
@@ -222,13 +154,9 @@ class _SemanticEncoder(_Backbone):
             scatter_index = safe_kc_idx.unsqueeze(-1).expand_as(edge_delta)
             unique_dense.scatter_add_(1, scatter_index, edge_delta)
         residual = unique_dense[inverse] * q_vector.unsqueeze(-1).to(unique_dense.dtype)
-        active = valid & (solution_active | distractor_active)
-        self._last_edge_active_ratio = active.float().mean().detach()
-        self._last_edge_kc_residual = residual.detach()
         return residual
 
     def semantic_augmentation(self, item_embedding: torch.Tensor, exercise_ids: torch.Tensor) -> torch.Tensor:
-        self._last_item_embedding = item_embedding.detach()
         unique_items, inverse = torch.unique(exercise_ids, sorted=True, return_inverse=True)
         bank = self.evidence_bank.gather(unique_items, device=item_embedding.device, dtype=item_embedding.dtype)
         self._validate_gathered_bank(bank, batch_size=unique_items.shape[0], semantic_dim=self.evidence_bank.embedding_dim)
@@ -255,13 +183,6 @@ class _SemanticEncoder(_Backbone):
         raw_batch = raw_residual[inverse]
         solution_batch = solution_residual[inverse]
         distractor_batch = distractor_residual[inverse]
-        self._last_raw_residual = raw_batch.detach()
-        self._last_solution_residual = solution_batch.detach()
-        self._last_distractor_residual = distractor_batch.detach()
-        self._last_raw_active = raw_active[inverse].detach()
-        self._last_solution_active = solution_active[inverse].detach()
-        self._last_distractor_active = distractor_active[inverse].detach()
-        self._last_view_gates = gates[inverse].detach()
         return item_embedding + raw_batch + solution_batch + distractor_batch
 
 class MOCD(_SemanticEncoder):
@@ -280,7 +201,7 @@ class MOCD(_SemanticEncoder):
         self.semantic_temperature = float(semantic_temperature)
 
     def _frozen_semantic_profile_weights(self, labels, mastery):
-        bank = self.evidence_bank.gather(self._pilot_exercises, device=mastery.device, dtype=mastery.dtype)
+        bank = self.evidence_bank.gather(self._batch_exercises, device=mastery.device, dtype=mastery.dtype)
         raw_active = bank['raw_available_mask']
         solution_active = bank['solution_available_mask']
         wrong_active = bank['distractor_available_mask'].any(dim=1)
@@ -290,7 +211,7 @@ class MOCD(_SemanticEncoder):
         path_active = (y.view(-1) > 0.5) * solution_active + (y.view(-1) <= 0.5) * wrong_active
         count = raw_active.to(mastery.dtype) + path_active.to(mastery.dtype)
         evidence = (raw_active.to(mastery.dtype).unsqueeze(-1) * bank['raw_embedding'] + path_active.to(mastery.dtype).unsqueeze(-1) * path) / count.clamp_min(1.0).unsqueeze(-1)
-        students, inverse = torch.unique(self._pilot_students, sorted=True, return_inverse=True)
+        students, inverse = torch.unique(self._batch_students, sorted=True, return_inverse=True)
         pooled = torch.zeros((students.numel(), evidence.shape[1]), device=evidence.device, dtype=evidence.dtype)
         pooled.index_add_(0, inverse, evidence)
         denom = torch.bincount(inverse, minlength=students.numel()).to(evidence.dtype)
@@ -300,9 +221,8 @@ class MOCD(_SemanticEncoder):
         return torch.softmax(self.semantic_temperature * similarity, dim=-1)
 
     def forward(self, stu_id, exer_id, q_vector):
-        self._pilot_students = stu_id
-        self._pilot_exercises = exer_id
-        self._pilot_q = q_vector
+        self._batch_students = stu_id
+        self._batch_exercises = exer_id
         exercise = self.semantic_augmentation(self.exercise_emb(exer_id), exer_id)
         knowledge = self._global_knowledge()
         edge = self._edge_residual(exer_id, q_vector)
@@ -323,7 +243,6 @@ class MOCD(_SemanticEncoder):
         mastery_pred, difficulty_pred = (mastery, difficulty)
         raw_discrimination = self.e_discrimination(exer_id)
         discrimination = torch.sigmoid(raw_discrimination)
-        self._diag = {'stat': mastery.detach(), 'difficulty': difficulty.detach(), 'discrimination': discrimination.detach()}
         x = discrimination * (mastery_pred - difficulty_pred) * q_vector
         x = self.drop_1(torch.tanh(self.prednet_full1(x)))
         x = self.drop_2(torch.tanh(self.prednet_full2(x)))
@@ -331,7 +250,7 @@ class MOCD(_SemanticEncoder):
         return torch.sigmoid(logit)
 
     def objectives(self, predictions, labels):
-        students = torch.unique(self._pilot_students)
+        students = torch.unique(self._batch_students)
         mastery = self._mastery_for_students(students)
         per_example = F.binary_cross_entropy(predictions, labels, reduction='none')
         p = predictions.clamp(1e-06, 1.0 - 1e-06)

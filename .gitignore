@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.venv/
+assets/
+runs/
+*.pt
+*.pth
+*.tar.gz
+*.zip

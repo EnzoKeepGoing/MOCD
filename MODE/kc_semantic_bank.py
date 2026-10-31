@@ -1,4 +1,4 @@
-"""Validated global-KC and item--KC semantic bank used by EGCD."""
+"""Validated global-KC and item--KC semantic bank used by MOCD."""
 from __future__ import annotations
 import hashlib
 import json
@@ -34,7 +34,7 @@ class KCSemanticBank:
         if missing:
             raise ValueError(f'KC semantic bank metadata is missing: {missing}')
         if self.metadata['schema_version'] != self.SCHEMA_VERSION:
-            raise ValueError(f"EGCD requires KC bank schema {self.SCHEMA_VERSION!r}, got {self.metadata['schema_version']!r}")
+            raise ValueError(f"KC bank requires schema {self.SCHEMA_VERSION!r}, got {self.metadata['schema_version']!r}")
         with names_path.open('r', encoding='utf-8') as handle:
             self.kc_names = json.load(handle)
         self.kc_name_embedding = np.load(name_embedding_path, mmap_mode='r')

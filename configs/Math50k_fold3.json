@@ -8,8 +8,8 @@
     0.3
   ],
   "emb_dim": 30,
-  "router_hidden_dim": 128,
-  "gate_init": -1.0,
+  "router_hidden_dim": 64,
+  "gate_init": 0.0,
   "raw_gate_init": 0.0,
   "projection_init_std": 0.001,
   "semantic_scale_init": 0.99,
@@ -17,8 +17,8 @@
   "batch_size": 128,
   "epochs": 30,
   "fold": 3,
-  "seed": 3407,
-  "beta": 13.0,
-  "semantic_temperature": 2.0,
-  "dataset": "jiuzhang_g3"
+  "seed": 42,
+  "beta": 12.0,
+  "semantic_temperature": 1.5,
+  "dataset": "Math50k"
 }

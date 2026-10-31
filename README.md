@@ -1,17 +1,15 @@
 # MOCD
 
-This repository contains the **MOCD** (Multi-level semantic-guided Online Cognitive Diagnosis) model, its five-fold configurations, mapped response data and training scripts for Grade3, Math50k and MidMath. The model code is kept under `mmcd/` for compatibility with the experiment implementation. No comparison models are included.
+This repository contains the **MOCD** (Multi-level semantic-guided Online Cognitive Diagnosis) model, its five-fold configurations, mapped response data and training scripts for Grade3, Math50k and MidMath. No comparison models are included.
 
 ## Repository layout
 
 ```text
 configs/                 Per-dataset, per-fold MOCD configurations
 data/                    Mapped responses, Q-matrices and fixed ID mappings
-mmcd/                    MOCD model, semantic evidence readers and training
+MODE/                    MOCD model, semantic evidence readers and training
 train.py                 Train and evaluate one fold
 run_five_folds.py        Run folds 0–4 sequentially on one device
-validate_release.py      Check released data and optional asset bindings
-results/                 Five-fold reference MOCD metrics
 requirements.txt         Python dependencies
 ```
 
@@ -19,28 +17,31 @@ requirements.txt         Python dependencies
 
 | Dataset | Directory | Students | Exercises | KCs | Train/validation responses | Test responses |
 | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Grade3 | `jiuzhang_g3` | 534 | 8,027 | 844 | 19,823 | 5,043 |
-| Math50k | `jiuzhang_g4_g5` | 962 | 20,460 | 1,483 | 40,674 | 10,262 |
-| MidMath | `jiuzhang_g7` | 701 | 17,944 | 931 | 24,291 | 6,127 |
+| Grade3 | `Grade3` | 534 | 8,027 | 844 | 19,823 | 5,043 |
+| Math50k | `Math50k` | 962 | 20,460 | 1,483 | 40,674 | 10,262 |
+| MidMath | `MidMath` | 701 | 17,944 | 931 | 24,291 | 6,127 |
 
 Each dataset has `train_valid.csv`, `test.csv`, `q_matrix.csv` and `id_mapping.json`. Response columns are `user_id,question_id,correct,fold`. For fold *f*, rows with `fold == f` are validation and the other rows in `train_valid.csv` are training. The same `test.csv` is used across folds. IDs in the responses, Q-matrix and semantic assets share the supplied mapping.
 
-The precomputed semantic evidence is supplied separately as `mocd_semantic_assets_20261027.tar.gz`. Install it with:
+The precomputed semantic evidence is supplied separately as `mocd_semantic_assets_encoded_20261029.tar.gz`. This release provides mapped IDs and encoded vectors, without exercise text, reasoning text or KC names. Install it with:
 
 ```bash
-python install_assets.py /path/to/mocd_semantic_assets_20261027.tar.gz
+python install_assets.py /path/to/mocd_semantic_assets_encoded_20261029.tar.gz
 ```
 
 This creates the following directories:
 
 ```text
-assets/jiuzhang_g3/item_bank/
-assets/jiuzhang_g3/kc_bank/
-assets/jiuzhang_g4_g5/item_bank/
-assets/jiuzhang_g4_g5/kc_bank/
-assets/jiuzhang_g7/item_bank/
-assets/jiuzhang_g7/kc_bank/
+assets/Grade3/item_bank/
+assets/Grade3/kc_bank/
+assets/Math50k/item_bank/
+assets/Math50k/kc_bank/
+assets/MidMath/item_bank/
+assets/MidMath/kc_bank/
 ```
+
+The installer labels the encoded banks with the corresponding dataset names
+(`Grade3`, `Math50k`, `MidMath`) and updates their metadata fingerprints.
 
 The item banks contain the frozen exercise-text, correct-reasoning and error-reasoning embeddings and availability/reliability masks. The KC banks contain KC-name and item–KC evidence embeddings. Both bank readers check the data and array fingerprints before training. The assets are excluded from Git by `.gitignore` because of their size; training uses the released precomputed vectors and makes no API calls.
 
@@ -50,19 +51,16 @@ Use Python 3.10 or newer. Install a PyTorch build compatible with the available 
 
 ```bash
 pip install -r requirements.txt
-python validate_release.py --assets assets
 ```
-
-`python validate_release.py` checks the mapped response data without loading PyTorch. The `--assets` option additionally checks that each bank is bound to its dataset's Q-matrix and ID mapping.
 
 ## Train one fold
 
 ```bash
 python train.py \
-  --config configs/jiuzhang_g7_fold0.json \
-  --data-dir data/jiuzhang_g7 \
-  --item-bank assets/jiuzhang_g7/item_bank \
-  --kc-bank assets/jiuzhang_g7/kc_bank \
+  --config configs/MidMath_fold0.json \
+  --data-dir data/MidMath \
+  --item-bank assets/MidMath/item_bank \
+  --kc-bank assets/MidMath/kc_bank \
   --output runs/MidMath/fold0 \
   --device cuda
 ```
@@ -101,15 +99,17 @@ All folds use a 30-dimensional student/KC embedding, batch size 128, up to 30 ep
 | MidMath | 3 | 512, 64 | 0.3, 0.2 | 0.0009 | 3407 | 13 | 2.0 |
 | MidMath | 4 | 512, 64 | 0.3, 0.5 | 0.0005 | 3407 | 12 | 1.5 |
 
-The reference five-fold results associated with these configurations are:
+The fold-specific configuration JSON files are the executable parameter record.
 
-| Dataset | Test AUC (%) | Test ACC (%) | KC-MND (%) |
+## Five-fold reference results
+
+Values are mean ± sample standard deviation across the five folds; all metrics are in percent.
+
+| Dataset | AUC | ACC | KC-MND |
 | --- | ---: | ---: | ---: |
 | Grade3 | 74.37 ± 0.33 | 73.56 ± 0.20 | 6.43 ± 2.69 |
 | Math50k | 73.29 ± 0.21 | 70.94 ± 0.15 | 7.56 ± 1.43 |
-| MidMath | 75.48 ± 0.31 | **71.94 ± 0.29** | 5.08 ± 2.56 |
-
-Values are five-fold means ± sample standard deviations. Fold-specific configuration JSON files are the executable parameter record.
+| MidMath | 75.48 ± 0.31 | 71.94 ± 0.29 | 5.08 ± 2.56 |
 
 ## Model and optimization
 

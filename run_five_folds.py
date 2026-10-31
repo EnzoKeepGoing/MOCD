@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 
-DATASETS = {'Grade3': 'jiuzhang_g3', 'Math50k': 'jiuzhang_g4_g5',
-            'MidMath': 'jiuzhang_g7'}
+DATASETS = {'Grade3': 'Grade3', 'Math50k': 'Math50k',
+            'MidMath': 'MidMath'}
 
 
 def main():

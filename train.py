@@ -8,10 +8,10 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch.utils.data import TensorDataset, DataLoader
-from mmcd import MOCD, fit
-from mmcd.item_evidence_bank import ItemEvidenceBank
-from mmcd.kc_semantic_bank import KCSemanticBank
-from mmcd.data import load_q_matrix
+from MODE import MOCD, fit
+from MODE.item_evidence_bank import ItemEvidenceBank
+from MODE.kc_semantic_bank import KCSemanticBank
+from MODE.data import load_q_matrix
 
 
 def read_responses(path, *, expected_fold=None, excluded_fold=None):

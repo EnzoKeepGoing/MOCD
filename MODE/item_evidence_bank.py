@@ -1,4 +1,4 @@
-"""CPU-resident item-level semantic evidence bank for EGCD."""
+"""CPU-resident item-level semantic evidence bank for MOCD."""
 from __future__ import annotations
 import hashlib
 import json
@@ -8,7 +8,7 @@ import numpy as np
 import torch
 
 class ItemEvidenceBank:
-    """Load Solution and per-option Distractor evidence for EGCD.
+    """Load solution and per-option distractor evidence for MOCD.
 
     Distractor cards use a CSR layout.  ``distractor_total_count`` stores the
     true number of wrong options, which can exceed the number of available
@@ -20,14 +20,14 @@ class ItemEvidenceBank:
     def __init__(self, root: Union[str, Path]):
         self.root = Path(root).expanduser().resolve()
         if not self.root.is_dir():
-            raise FileNotFoundError(f'EGCD evidence bank not found: {self.root}')
+            raise FileNotFoundError(f'Item evidence bank not found: {self.root}')
         missing = [name for name in self.REQUIRED_FILES if not (self.root / name).is_file()]
         if missing:
-            raise FileNotFoundError(f'EGCD evidence bank is incomplete ({self.root}); missing: {missing}')
+            raise FileNotFoundError(f'Item evidence bank is incomplete ({self.root}); missing: {missing}')
         with (self.root / 'metadata.json').open('r', encoding='utf-8') as handle:
             self.metadata: Dict[str, object] = json.load(handle)
         if self.metadata.get('schema_version') != self.SCHEMA_VERSION:
-            raise ValueError(f"EGCD requires schema {self.SCHEMA_VERSION!r}, got {self.metadata.get('schema_version')!r}")
+            raise ValueError(f"Item bank requires schema {self.SCHEMA_VERSION!r}, got {self.metadata.get('schema_version')!r}")
         self.raw_embedding = np.load(self.root / 'raw_embedding.npy', mmap_mode='r')
         self.raw_available_mask = np.load(self.root / 'raw_available_mask.npy', mmap_mode='r')
         self.solution_embedding = np.load(self.root / 'solution_embedding.npy', mmap_mode='r')
@@ -45,7 +45,7 @@ class ItemEvidenceBank:
             raise ValueError('solution_embedding must have shape [num_items, dim]')
         num_items, embedding_dim = self.solution_embedding.shape
         if num_items <= 0 or embedding_dim <= 0:
-            raise ValueError('EGCD evidence bank cannot be empty')
+            raise ValueError('Item evidence bank cannot be empty')
         if self.raw_embedding.shape != (num_items, embedding_dim):
             raise ValueError(f'raw_embedding must have shape [{num_items}, {embedding_dim}]')
         for name, array in (('raw_available_mask', self.raw_available_mask), ('solution_reliability', self.solution_reliability), ('solution_available_mask', self.solution_available_mask), ('distractor_total_count', self.distractor_total_count)):
@@ -79,23 +79,23 @@ class ItemEvidenceBank:
         metadata_items = int(self.metadata.get('num_items', num_items))
         metadata_dim = int(self.metadata.get('embedding_dim', embedding_dim))
         if metadata_items != num_items or metadata_dim != embedding_dim:
-            raise ValueError('metadata dimensions do not match EGCD evidence arrays')
+            raise ValueError('Metadata dimensions do not match item evidence arrays')
         for key in ('id_mapping_sha256', 'q_matrix_sha256', 'bank_fingerprint', 'array_sha256'):
             if not self.metadata.get(key):
-                raise ValueError(f'EGCD bank metadata is missing {key!r}')
+                raise ValueError(f'Item bank metadata is missing {key!r}')
         array_hashes = self.metadata['array_sha256']
         if not isinstance(array_hashes, dict):
-            raise ValueError('EGCD array_sha256 metadata must be a mapping')
+            raise ValueError('Item bank array_sha256 metadata must be a mapping')
         expected_array_files = {name for name in self.REQUIRED_FILES if name.endswith('.npy')}
         if set(array_hashes) != expected_array_files:
-            raise ValueError('EGCD array hashes do not cover the required arrays')
+            raise ValueError('Item bank array hashes do not cover the required arrays')
         for filename, expected_hash in array_hashes.items():
             if self._sha256_file(self.root / filename) != expected_hash:
-                raise ValueError(f'EGCD bank array fingerprint mismatch: {filename}')
+                raise ValueError(f'Item bank array fingerprint mismatch: {filename}')
         expected_fingerprint = str(self.metadata['bank_fingerprint'])
         actual_fingerprint = self.compute_fingerprint(self.metadata)
         if actual_fingerprint != expected_fingerprint:
-            raise ValueError(f'EGCD bank metadata fingerprint mismatch: expected {expected_fingerprint}, got {actual_fingerprint}')
+            raise ValueError(f'Item bank metadata fingerprint mismatch: expected {expected_fingerprint}, got {actual_fingerprint}')
 
     @staticmethod
     def _sha256_file(path: Path) -> str:
@@ -136,20 +136,20 @@ class ItemEvidenceBank:
         data_dir = Path(data_dir).expanduser().resolve()
         metadata_path = root / 'metadata.json'
         if not metadata_path.is_file():
-            raise FileNotFoundError(f'EGCD bank metadata not found: {metadata_path}')
+            raise FileNotFoundError(f'Item bank metadata not found: {metadata_path}')
         with metadata_path.open('r', encoding='utf-8') as handle:
             metadata = json.load(handle)
         if metadata.get('schema_version') != cls.SCHEMA_VERSION:
-            raise ValueError(f"EGCD requires schema {cls.SCHEMA_VERSION!r}, got {metadata.get('schema_version')!r}")
+            raise ValueError(f"Item bank requires schema {cls.SCHEMA_VERSION!r}, got {metadata.get('schema_version')!r}")
         if dataset and metadata.get('dataset') not in (None, dataset):
-            raise ValueError(f"EGCD bank dataset {metadata['dataset']!r} does not match {dataset!r}")
+            raise ValueError(f"Item bank dataset {metadata['dataset']!r} does not match {dataset!r}")
         for filename, metadata_key in (('q_matrix.csv', 'q_matrix_sha256'), ('id_mapping.json', 'id_mapping_sha256')):
             path = data_dir / filename
             if not path.is_file():
                 raise FileNotFoundError(f'Dataset file not found: {path}')
             expected = metadata.get(metadata_key)
             if not expected or cls._sha256_file(path) != expected:
-                raise ValueError(f'EGCD bank and dataset {filename} are not aligned')
+                raise ValueError(f'Item bank and dataset {filename} are not aligned')
         return metadata
 
     def gather(self, question_idx: torch.Tensor, device: Optional[Union[torch.device, str]]=None, dtype: Optional[torch.dtype]=None) -> Dict[str, torch.Tensor]:
@@ -179,5 +179,5 @@ class ItemEvidenceBank:
         idx = question_idx.detach().to(device=destination, dtype=torch.long)
         if idx.numel() and idx.device.type == 'cpu':
             if idx.min().item() < 0 or idx.max().item() >= self.num_items:
-                raise IndexError(f'Question ID outside EGCD bank range [0, {self.num_items})')
+                raise IndexError(f'Question ID outside item bank range [0, {self.num_items})')
         return {name: tensor.index_select(0, idx) for name, tensor in self._device_tensor_cache[cache_key].items()}
