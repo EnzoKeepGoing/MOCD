@@ -23,7 +23,7 @@ requirements.txt         Python dependencies
 
 Each dataset has `train_valid.csv`, `test.csv`, `q_matrix.csv` and `id_mapping.json`. Response columns are `user_id,question_id,correct,fold`. For fold *f*, rows with `fold == f` are validation and the other rows in `train_valid.csv` are training. The same `test.csv` is used across folds. IDs in the responses, Q-matrix and semantic assets share the supplied mapping.
 
-The precomputed semantic evidence is supplied separately as `mocd_semantic_assets_encoded_20261029.tar.gz`. This release provides mapped IDs and encoded vectors, without exercise text, reasoning text or KC names. Install it with:
+The precomputed semantic evidence is supplied separately as `mocd_semantic_assets_encoded_20261029.tar.gz`. 
 
 ```bash
 python install_assets.py /path/to/mocd_semantic_assets_encoded_20261029.tar.gz
