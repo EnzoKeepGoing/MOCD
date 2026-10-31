@@ -113,4 +113,4 @@ Values are mean ± sample standard deviation across the five folds; all metrics 
 
 ## Model and optimization
 
-MOCD combines student–KC mastery and exercise–KC difficulty with three exercise semantic views (exercise text, correct reasoning and error analysis) and KC-level semantic evidence. The response objective is uncertainty-weighted BCE. The mastery-profile objective is `−V + βV²`, where KC weights come from frozen response-conditioned semantic evidence. Training applies the recorded module-wise gradient alignment to the two objectives, then updates the model with Adam. The model's semantic banks are fixed inputs, not online LLM requests.
+MOCD combines student–KC mastery and exercise–KC difficulty with three exercise semantic views (exercise text, correct reasoning and error analysis) and KC-level semantic evidence. 
