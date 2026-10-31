@@ -8,6 +8,7 @@ This repository contains the **MOCD** (Multi-level semantic-guided Online Cognit
 configs/                 Per-dataset, per-fold MOCD configurations
 data/                    Mapped responses, Q-matrices and fixed ID mappings
 MODE/                    MOCD model, semantic evidence readers and training
+prompts/                 Offline semantic evidence generation prompts
 train.py                 Train and evaluate one fold
 run_five_folds.py        Run folds 0–4 sequentially on one device
 requirements.txt         Python dependencies
@@ -44,6 +45,18 @@ The installer labels the encoded banks with the corresponding dataset names
 (`Grade3`, `Math50k`, `MidMath`) and updates their metadata fingerprints.
 
 The item banks contain the frozen exercise-text, correct-reasoning and error-reasoning embeddings and availability/reliability masks. The KC banks contain KC-name and item–KC evidence embeddings. Both bank readers check the data and array fingerprints before training. The assets are excluded from Git by `.gitignore` because of their size; training uses the released precomputed vectors and makes no API calls.
+
+## Semantic evidence prompts
+
+The archived prompt templates are in [`prompts/`](prompts/). Each stage pairs a system prompt with a user prefix followed by its JSON input; the review stage also receives the preceding agents' evidence:
+
+| Stage | System prompt | User prefix |
+| --- | --- | --- |
+| Independent solution reasoning | [`solution_system_v2.txt`](prompts/solution_system_v2.txt) | [`solution_user.txt`](prompts/solution_user.txt) |
+| Distractor/error reasoning | [`distractor_system_v3.txt`](prompts/distractor_system_v3.txt) | [`distractor_user.txt`](prompts/distractor_user.txt) |
+| Evidence and KC-binding review | [`critic_system_v2_5.txt`](prompts/critic_system_v2_5.txt) | [`critic_user.txt`](prompts/critic_user.txt) |
+
+These prompts document the offline evidence-generation workflow. Training and evaluation read the encoded banks above and do not invoke an LLM.
 
 ## Environment
 
